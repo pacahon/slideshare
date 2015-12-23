@@ -1,27 +1,42 @@
 # -*- coding: utf-8 -*-
+from __future__ import unicode_literals, absolute_import, print_function
 
-import time, hashlib
-import urllib2, urllib
-from urlparse import urlparse, urlunparse
+import json
 import logging
+import mimetypes
+import six
+import hashlib
+import itertools
+import xmltodict
+import time
+
+try:
+    from urllib2 import Request, urlopen
+except ImportError:
+    from urllib.request import Request, urlopen
+try:
+    from urlparse import urlparse, urlunparse, urlencode
+except ImportError:
+    from urllib.parse import urlparse, urlunparse, urlencode
+
+try:
+    from mimetools import choose_boundary as make_boundary
+except ImportError:
+    # hope it's never gone
+    from email.generator import _make_boundary as make_boundary
+from functools import wraps
 logger = logging.getLogger('slideshare.api')
 
-import xmltodict
-
-from functools import wraps
-
-import itertools
-import mimetools
-import mimetypes
 
 class MultiPartForm(object):
     """Accumulate the data to be used when posting a form."""
-    #'PyMOTW (http://www.doughellmann.com/PyMOTW/)'
+
+    # 'PyMOTW (http://www.doughellmann.com/PyMOTW/)'
 
     def __init__(self):
         self.form_fields = []
         self.files = []
-        self.boundary = mimetools.choose_boundary()
+        self.boundary = make_boundary()
         return
 
     def get_content_type(self):
@@ -36,7 +51,8 @@ class MultiPartForm(object):
         """Add a file to be uploaded."""
         body = fileHandle.read()
         if mimetype is None:
-            mimetype = mimetypes.guess_type(filename)[0] or 'application/octet-stream'
+            mimetype = mimetypes.guess_type(filename)[
+                           0] or 'application/octet-stream'
         self.files.append((fieldname, filename, mimetype, body))
         return
 
@@ -51,25 +67,25 @@ class MultiPartForm(object):
 
         # Add the form fields
         parts.extend(
-            [ part_boundary,
-              'Content-Disposition: form-data; name="%s"' % name,
-              '',
-              value,
-            ]
+            [part_boundary,
+             'Content-Disposition: form-data; name="%s"' % name,
+             '',
+             value,
+             ]
             for name, value in self.form_fields
-            )
+        )
 
         # Add the files to upload
         parts.extend(
-            [ part_boundary,
-              'Content-Disposition: file; name="%s"; filename="%s"' % \
-                 (field_name, filename),
-              'Content-Type: %s' % content_type,
-              '',
-              body,
-            ]
+            [part_boundary,
+             'Content-Disposition: file; name="%s"; filename="%s"' % \
+             (field_name, filename),
+             'Content-Type: %s' % content_type,
+             '',
+             body,
+             ]
             for field_name, filename, content_type, body in self.files
-            )
+        )
 
         # Flatten the list and add closing boundary marker,
         # then return CR+LF separated data
@@ -78,22 +94,24 @@ class MultiPartForm(object):
         flattened.append('')
         for flat in flattened:
             if not isinstance(flat, str):
-                print flat
+                print(flat)
         return '\r\n'.join(flattened)
 
 
 class SlideShareServiceError(Exception):
     """ custom exceptions """
-    def __init__(self, errno, errmsg):
-         self.errno = errno
-         self.errmsg = errmsg
-    def __str__(self):
-        return 'SlideShareServiceError %s: %s' %(self.errno, self.errmsg)
 
+    def __init__(self, errno, errmsg):
+        self.errno = errno
+        self.errmsg = errmsg
+
+    def __str__(self):
+        return 'SlideShareServiceError %s: %s' % (self.errno, self.errmsg)
 
 
 def callapi(func):
     service_url = 'https://www.slideshare.net/api/2/' + func.__name__
+
     @wraps(func)
     def wrapper(*args, **kwargs):
         """
@@ -107,48 +125,51 @@ def callapi(func):
         """
         self = args[0]
         fparams, fargs, rt = func(*args, **kwargs)
-        #current time in Unix TimeStamp format, to the nearest second
+        # current time in Unix TimeStamp format, to the nearest second
         ts = int(time.time())
+        hash_str = self.sharedsecret + str(ts)
         params = {
             'api_key': self.api_key,
             'ts': ts,
-            'hash': hashlib.sha1(self.sharedsecret + str(ts)).hexdigest(),
+            'hash': hashlib.sha1(hash_str.encode("utf-8")).hexdigest(),
         }
-        for k,v in fargs.iteritems():
+        for k, v in six.iteritems(fargs):
             if (k in fparams) and v:
                 params[k] = v
         logger.debug('open url %s' % service_url)
         logger.debug('with parameters %s ' % str(params))
         if 'slideshow_srcfile' in params:
             form = MultiPartForm()
-            for k,v in params.iteritems():
+            for k, v in six.iteritems(params):
                 if k == 'slideshow_srcfile':
-                    form.add_file(k, filename = v['filename'],
-                    fileHandle = v['filehandle'],
-                    mimetype = v['mimetype'])
+                    form.add_file(k, filename=v['filename'],
+                                  fileHandle=v['filehandle'],
+                                  mimetype=v['mimetype'])
                 else:
-                    form.add_field(k,str(v))
+                    form.add_field(k, str(v))
             # Build the request
-            request = urllib2.Request(service_url)
+            request = Request(service_url)
             body = str(form)
             request.add_header('Content-type', form.get_content_type())
             request.add_header('Content-length', len(body))
             request.add_data(body)
-            data = urllib2.urlopen(request).read()
+            response = urlopen(request).read()
         else:
-            eparams = urllib.urlencode(params)
-            data = urllib2.urlopen(service_url, eparams).read()
-        json = xmltodict.parse(data)
-        if json.get('SlideShareServiceError'):
-            print data
-            print json
+            # Convert params dict to binary format
+            params = ' '.join(format(ord(letter), 'b') for letter in json.dumps(params))
+            print(params)
+            eparams = urlencode(params)
+            response = urlopen(service_url, eparams).read()
+        data = xmltodict.parse(response)
+        if data.get('SlideShareServiceError'):
+            print(response)
+            print(data)
             raise SlideShareServiceError(
-                json['SlideShareServiceError']['Message']['@ID'],
-                json['SlideShareServiceError']['Message']['#text'])
-        return json
+                data['SlideShareServiceError']['Message']['@ID'],
+                data['SlideShareServiceError']['Message']['#text'])
+        return data
 
     return wrapper
-
 
 
 class SlideshareAPI(object):
@@ -161,7 +182,6 @@ class SlideshareAPI(object):
             self.api_key = api_key
         else:
             raise ValueError
-
 
     @callapi
     def get_slideshow(self, slideshow_id=None, slideshow_url=None, **kwargs):
@@ -195,7 +215,7 @@ class SlideshareAPI(object):
                 urlob = urlparse(slideshow_url)
                 if urlob.hostname == 'www.slideshare.net':
                     url = urlunparse([urlob.scheme, urlob.netloc,
-                        urlob.path, '', '', ''])
+                                      urlob.path, '', '', ''])
                     params.append('slideshow_url')
                     kwargs['slideshow_url'] = url
                 else:
@@ -203,7 +223,6 @@ class SlideshareAPI(object):
         else:
             raise ValueError
         return params, kwargs, 'GET'
-
 
     @callapi
     def get_slideshows_by_tag(self, tag, **kwargs):
@@ -279,7 +298,7 @@ class SlideshareAPI(object):
             1 to include them, 0 (default) otherwise.
         """
         params = ['username_for', 'username', 'password', 'limit',
-            'offset', 'detailed', 'get_unconverted']
+                  'offset', 'detailed', 'get_unconverted']
 
         kwargs['username_for'] = username_for
         return params, kwargs, 'GET'
@@ -328,8 +347,8 @@ class SlideshareAPI(object):
             1 to include, 0 (default) for basic information.
         """
         params = ['q', 'page', 'items_per_page', 'lang', 'sort',
-            'upload_date', 'what', 'download', 'fileformat', 'file_type',
-            'cc', 'cc_adapt', 'cc_commercial', 'detailed']
+                  'upload_date', 'what', 'download', 'fileformat', 'file_type',
+                  'cc', 'cc_adapt', 'cc_commercial', 'detailed']
         kwargs['q'] = q
         return params, kwargs, 'GET'
 
@@ -350,7 +369,7 @@ class SlideshareAPI(object):
         username: username of the requesting user
         password: password of the requesting user
         """
-        params = ['username_for', 'username', 'password' ]
+        params = ['username_for', 'username', 'password']
         kwargs['username_for'] = username_for
         return params, kwargs, 'GET'
 
@@ -388,7 +407,7 @@ class SlideshareAPI(object):
         limit: specify number of items to return
         offset: specify offset
         """
-        params = ['username_for', 'limit', 'offset' ]
+        params = ['username_for', 'limit', 'offset']
         kwargs['username_for'] = username_for
         return params, kwargs, 'GET'
 
@@ -406,14 +425,14 @@ class SlideshareAPI(object):
         username: username of the requesting user
         password: password of the requesting user
         """
-        params = ['username', 'password' ]
+        params = ['username', 'password']
         kwargs = {}
         kwargs['username'] = username
         kwargs['password'] = password
         return params, kwargs, 'GET'
 
     @callapi
-    def edit_slideshow(self,username, password, slideshow_id, **kwargs):
+    def edit_slideshow(self, username, password, slideshow_id, **kwargs):
         """
         Edit Existing Slideshow
 
@@ -443,11 +462,12 @@ class SlideshareAPI(object):
             the slideshow. Requires make_slideshow_private to be Y
         """
         params = ['username', 'password', 'slideshow_id', 'slideshow_title',
-        'slideshow_description', 'slideshow_tags', 'make_slideshow_private']
+                  'slideshow_description', 'slideshow_tags',
+                  'make_slideshow_private']
         if 'make_slideshow_private' in kwargs:
             if kwargs['make_slideshow_private'] == 'Y':
                 params += ['generate_secret_url', 'allow_embeds',
-                'share_with_contacts']
+                           'share_with_contacts']
         kwargs['username'] = username
         kwargs['password'] = password
         kwargs['slideshow_id'] = slideshow_id
@@ -477,9 +497,10 @@ class SlideshareAPI(object):
 
     @callapi
     def upload_slideshow(self, username, password,
-         slideshow_title, slideshow_srcfile=None, upload_url=None,
-         slideshow_description=None,
-         slideshow_tags=None, **kwargs):
+                         slideshow_title, slideshow_srcfile=None,
+                         upload_url=None,
+                         slideshow_description=None,
+                         slideshow_tags=None, **kwargs):
         """
         Upload Slideshow
 
@@ -538,13 +559,15 @@ class SlideshareAPI(object):
         and the username and password associated with the account being
         uploaded to.
         """
-        params = ['username', 'password', 'slideshow_title', 'slideshow_srcfile',
-            'upload_url', 'slideshow_description', 'slideshow_tags',
-            'make_src_public']
+        params = ['username', 'password', 'slideshow_title',
+                  'slideshow_srcfile',
+                  'upload_url', 'slideshow_description', 'slideshow_tags',
+                  'make_src_public']
         if 'make_slideshow_private' in kwargs:
             if kwargs['make_slideshow_private'] == 'Y':
                 params += ['make_slideshow_private', 'generate_secret_url'
-                    'allow_embeds', 'share_with_contacts']
+                                                     'allow_embeds',
+                           'share_with_contacts']
         if slideshow_srcfile:
             request_type = 'POST'
         else:
@@ -574,7 +597,7 @@ class SlideshareAPI(object):
         slideshow_id: the slideshow to be favorited
         """
         params = ['username', 'password', 'slideshow_id']
-        kwargs ={}
+        kwargs = {}
         kwargs['username'] = username
         kwargs['password'] = password
         kwargs['slideshow_id'] = slideshow_id
@@ -601,8 +624,6 @@ class SlideshareAPI(object):
         kwargs['password'] = password
         kwargs['slideshow_id'] = slideshow_id
         return params, kwargs, 'GET'
-
-
 
     @callapi
     def get_user_campaigns(self, username, password):
@@ -647,13 +668,14 @@ class SlideshareAPI(object):
             For ruby/C people this is: strftime("%Y%m%d%H%M")
         """
         request_type = 'POST'
-        params = ['username', 'password', 'begin', 'end' ]
+        params = ['username', 'password', 'begin', 'end']
         kwargs['username'] = username
         kwargs['password'] = password
         return params, kwargs, request_type
 
     @callapi
-    def get_user_campaign_leads(self, username, password, campaign_id, **kwargs):
+    def get_user_campaign_leads(self, username, password, campaign_id,
+                                **kwargs):
         """
         Get User Leads Information For A Specific Lead Campaign
 
@@ -672,7 +694,7 @@ class SlideshareAPI(object):
         end: only get leads collected before this UTC date: YYYYMMDDHHMM
         """
         request_type = 'POST'
-        params = [ 'username', 'password', 'campaign_id', 'begin', 'end' ]
+        params = ['username', 'password', 'campaign_id', 'begin', 'end']
         kwargs['username'] = username
         kwargs['password'] = password
         kwargs['campaign_id'] = campaign_id
