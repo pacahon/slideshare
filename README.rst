@@ -3,6 +3,8 @@ Introduction
 
 Lean and complete SlideShare_ API Implementation.
 
+"""http://www.slideshare.net/developers/documentation"""
+
 Usage
 -----
 
