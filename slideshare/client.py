@@ -1,95 +1,204 @@
+
+import logging
+import hashlib
 import requests
-from six.moves import (urlparse, urlunparse)
+from requests.exceptions import ConnectTimeout, ConnectionError
+import time
+
+import xmltodict
+from six.moves.urllib.parse import (urlparse, urlunparse)
+
+logger = logging.getLogger(__name__)
+# TODO: NullPointer handler?
+# TODO: Add cache?
 
 
-def client(api_key, shared_secret, username=None, password=None):
-    # Get default session?
-    return SlideShareAPI(api_key=api_key, shared_secret=shared_secret, username=username, password=password)
+def client(*args, **kwargs):
+    """Returns SlideShareAPI instance. See SlideShareAPI for details"""
+    return SlideShareAPI(*args, **kwargs)
 
 
-class SlideShareServiceError(Exception):
-    pass
+class SlideShareError(Exception):
+    """ SlideShare API Error Code.
+    See details on http://www.slideshare.net/developers/documentation
+    """
+    def __init__(self, errno, errmsg):
+        self.errno = errno
+        self.errmsg = errmsg
+
+    def __str__(self):
+        return "SlideShareError {}: {}".format(self.errno, self.errmsg)
 
 
 class SlideShareAPI(requests.Session):
 
-    BASE_DOMAIN = "www.slideshare.net"
+    __API_VERSION__ = 2
+    BASE_URL = "https://www.slideshare.net/api/{}/".format(__API_VERSION__)
 
-    REQUIRED_CREDENTIALS = [
-        'api_key',
-        'shared_secret',
-    ]
-
-    OPTIONAL_CREDENTIALS = [
-        'username',
-        'password'
-    ]
-
-    _base_url = "https://{}/api/2/".format(BASE_DOMAIN)
-
-    def __init__(self, **options):
+    def __init__(self,
+                 api_key,
+                 shared_secret,
+                 username=None,
+                 password=None,
+                 debugHTTP=False):
+        # TODO: add description
+        # Initialize session
         super(SlideShareAPI, self).__init__()
-        self.set_credentials(options)
 
-    def set_credentials(self, credentials):
-        for kwarg in self.REQUIRED_CREDENTIALS:
-            if not credentials.get(kwarg, None):
-                raise ValueError("Credential with key '{}' must be specified")
-        for kwarg in self.OPTIONAL_CREDENTIALS:
-            setattr(self, kwarg, credentials.get(kwarg, None))
+        required_list = [api_key, shared_secret]
+        if not all(required_list):
+            raise ValueError("Api initialization error: "
+                             "api key and shared secret must be provided")
+        # Set api key for all future requests
+        self.params["api_key"] = api_key
+
+        self.shared_secret = shared_secret
+        # Default credentials
+        self.username = username
+        self.password = password
+
+        self._debugHTTP = bool(debugHTTP)
+        if self._debugHTTP:
+            import requests.packages.urllib3
+            from six.moves import http_client
+            # these two lines enable debugging at httplib level (requests->urllib3->httplib)
+            # you will see the REQUEST, including HEADERS and DATA, and RESPONSE with HEADERS but without DATA.
+            # the only thing missing will be the response.body which is not logged.
+            http_client.HTTPConnection.debuglevel = 1
+
+            logging.basicConfig()  # you need to initialize logging, otherwise you will not see anything from requests
+            logger.setLevel(logging.DEBUG)
+            requests_log = logging.getLogger("requests.packages.urllib3")
+            requests_log.setLevel(logging.DEBUG)
+            requests_log.propagate = True
 
     def _url(self, relative_url):
-        return "{0}{1}".format(self._base_url, relative_url)
+        return "{0}{1}".format(self.BASE_URL, relative_url)
 
-    def _validate_all_known_args(self, actual, allowed):
-        for kwarg in actual:
-            if kwarg not in allowed:
-                raise ValueError(
-                    "Invalid args key '{}', must be one of: "
-                    "{}".format(kwarg, ', '.join(allowed)))
+    def get(self, url, **kwargs):
+        try:
+            response = super(SlideShareAPI, self).get(url, params=kwargs)
+        except (ConnectionError, ValueError, ConnectTimeout) as e:
+            logger.error(e)
+            # FIXME: processing errors? What to do with this crap? :<
+            raise e
+        logger.debug(response.content)
+        data = xmltodict.parse(response.content)
+        if data.get('SlideShareServiceError'):
+            logger.debug(data)
+            raise SlideShareError(
+                data['SlideShareServiceError']['Message']['@ID'],
+                data['SlideShareServiceError']['Message']['#text'])
+        return data
+
+    def prepare_request(self, request):
+        """ Overrides requests.Session method. All requests in addition
+        to `api_key` must provide `ts` and `hash` parameters
+        """
+        timestamp = int(time.time())
+        self.params["ts"] = timestamp
+        hash = self.shared_secret + str(timestamp)
+        self.params["hash"] = hashlib.sha1(hash.encode("utf-8")).hexdigest()
+        return super(SlideShareAPI, self).prepare_request(request)
 
     def get_slideshow(self, slideshow_id=None, slideshow_url=None, **optional):
         """Get slideshow information by id or url
 
         Args:
-            slideshow_id:
+            slideshow_id (int):
                 id of the slideshow to be fetched. Precedence over slideshow_url.
-            slideshow_url:
+            slideshow_url (string):
                 URL of the slideshow to be fetched. Optional if `slideshow_id` specified
-            username:
+            username (string):
                 username of the requesting user [Optional]
-            password:
+            password (string):
                 password of the requesting user [Optional]
-            exclude_tags:
+            exclude_tags (boolean):
                 Exclude tags from the detailed information. 1 to exclude. [Optional]
-            detailed:
-                Set to True to include optional information.
-                Defaults to False. If False only basic information attached [Optional]
+            detailed (boolean):
+                Set to 1 to include optional information (tags, for example)
+                Defaults to None. If None only basic information attached [Optional]
+
         """
         url = self._url('get_slideshow')
         params = {}
         if slideshow_id:
             params["slideshow_id"] = slideshow_id
         elif slideshow_url:
-            # FIXME: Are we really needs validate it?
-            parsed_url = urlparse(slideshow_url)
-            if parsed_url.hostname == self.BASE_DOMAIN:
-                params["slideshow_url"] = urlunparse([
-                    parsed_url.scheme,
-                    parsed_url.netloc,
-                    parsed_url.path, '', '', ''
-                ])
+            params["slideshow_url"] = slideshow_url
         else:
             raise ValueError("get_slideshow: slideshow_id or "
                              "slideshow_url must be specified")
-        response = self.get(url, params)
-        # FIXME: Изучить как ведёт себя ts при кешировании (если поставить запоздалую дату)
-        # Proxy?
-        # self.request()
+
+        if "exclude_tags" in optional:
+            params["exclude_tags"] = int(bool(optional["exclude_tags"]))
+
+        if "detailed" in optional:
+            params["detailed"] = int(bool(optional["detailed"]))
+
+        params.update(self.params)
+        return self.get(url, **params)
 
 
 
-    def get_slideshows_by_tag(self, tag, **kwargs):
-        pass
+    def get_slideshows_by_tag(self, tag, **optional):
+        """ Get slideshows by tag
+
+        Args:
+            tag (string):
+                tag name
+            limit (int):
+                specify number of items to return. Default to 10. [Optional]
+            offset (int):
+                specify offset [Optional]
+            detailed (boolean):
+                Set to 1 to include optional information (tags, for example)
+                Defaults to None. If None only basic information attached [Optional]
+
+        """
+        url = self._url('get_slideshows_by_tag')
+        params = {}
+        params["tag"] = tag
+
+        if "limit" in optional:
+            try:
+                params["limit"] = int(optional.get("limit"))
+            except ValueError:
+                raise ValueError("get_slideshows_by_tag: invalid "
+                                 "value for {}".format(optional.get("limit")))
+        else:
+            params["limit"] = 10
+
+        if "offset" in optional:
+            try:
+                params["offset"] = int(optional.get("offset"))
+            except ValueError:
+                raise ValueError("get_slideshows_by_tag: invalid "
+                                 "value for {}".format(optional.get("offset")))
+
+        if "detailed" in optional:
+            params["detailed"] = int(bool(optional["detailed"]))
+
+        return self.get(url, **params)
+
+    def upload_slideshow(self):
+        """Upload slideshow
+
+        Note: This method requires extra permissions. If you want to
+        upload a file using SlideShare API, please send an email to
+        api@slideshare.com with your developer account username
+        describing the use case.
+
+        """
 
 
+
+
+x = client(api_key="OX5YoPYg", shared_secret="R3lITlTK", username="pacahon", password="q3wcp9", debugHTTP=True)
+# y = x.get_slideshow(slideshow_id="56441607", exclude_tags=False, detailed=True)
+# print("DETAILED")
+# print(y)
+print('-----------')
+y = x.get_slideshows_by_tag("crisis", limit=1)
+print(y)
+print("END")

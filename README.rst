@@ -5,6 +5,8 @@ Lean and complete SlideShare_ API Implementation.
 
 """http://www.slideshare.net/developers/documentation"""
 
+""" Best tests by eye http://apiexplorer.slideshare.net/"""
+
 Usage
 -----
 
