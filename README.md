@@ -1,7 +1,10 @@
 # python-slideshare
 
 Inspired by https://github.com/cleder/slideshare
-py3 compatible implementation of Slideshare API
+
+Python 3 compatible implementation of Slideshare API with python `requests` module.
+
+WIP!!! Don't try to use it on production.
 
 ## How to use
 
@@ -51,7 +54,7 @@ extra permissions see `slideshare.slideshow.upload_slideshow` method
 ```
 py.test --api_key=<YOUR_API_KEY> --shared_secret=<YOUR_SHARED_SECRET>
 ```
-See `tests/conftest.py` for more details.
+See `tests/conftest.py` for more details about available options.
 
 
 <!--python setup.py test-->
