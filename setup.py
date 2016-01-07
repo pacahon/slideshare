@@ -11,7 +11,7 @@ def read(*rnames):
 def get_requirements():
     return open('requirements.txt').read().splitlines()
 
-long_description = read('README.rst')
+long_description = read('README.md')
 
 setup(
     name='slideshare',

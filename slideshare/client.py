@@ -143,6 +143,12 @@ class SlideShareAPI(requests.Session):
     def prefetch_default_credentials(self, params, options):
         """ Prefetch default credentials if they are not specified
         """
-        params["username"] = options.get("username", self.username)
-        params["password"] = options.get("password", self.password)
+        if "username" in options:
+            params["username"] = options["username"]
+        elif self.username:
+            params["username"] = self.username
+        if "password" in options:
+            params["password"] = options["password"]
+        elif self.password:
+            params["password"] = self.password
         return params

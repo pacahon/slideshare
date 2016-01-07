@@ -95,7 +95,11 @@ class Slideshow(object):
         the API account, and the username and password associated with the
         account being uploaded to.
 
-        Note: This method requires extra permissions.
+        Note:
+            This method requires extra permissions. If you want to upload
+            a file using SlideShare API, please send an email to
+            api@slideshare.com with your developer account username
+            describing the use case.
 
         Args:
             slideshow_title (string):
