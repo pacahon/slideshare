@@ -1,5 +1,7 @@
 from __future__ import unicode_literals, absolute_import, print_function
 
+# TODO: divide into slideshows/slideshow?
+
 
 class Slideshow(object):
     def __init__(self, client_session):
@@ -85,8 +87,9 @@ class Slideshow(object):
 
     def upload_slideshow(self, slideshow_title, slideshow_srcfile=None,
                          upload_url=None, **optional):
-        """ Upload slideshow. Sent POST-request if `slideshow_srcfile`
-        provided, otherwise send GET.
+        """ Upload slideshow.
+
+        Sent POST-request if `slideshow_srcfile` provided, otherwise send GET.
         The document will upload into the account of the user specified
         by (username / password).
         The user associated with the API key need not be the same as the
@@ -113,15 +116,21 @@ class Slideshow(object):
             slideshow_srcfile (string):
                 Slideshow file path. Precedence over upload_url.
             upload_url (string):
-                String containing an url pointing to the power point file. Ex:
-                http://domain.tld/directory/my_power_point.ppt
-                The following urls are also acceptable
-                http://www.domain.tld/directory/file.ppt
-                http://www.domain.tld/directory/file.cgi?filename=file.ppt
+                String containing an url pointing to the power point file. Example::
+
+                    http://domain.tld/directory/my_power_point.ppt
+
+                The following urls are also acceptable::
+
+                    http://www.domain.tld/directory/file.ppt
+                    http://www.domain.tld/directory/file.cgi?filename=file.ppt
+
                 Note:
                     This will not accept entries that cannot be identified
-                    by their extension. Example:
-                    http://www.domain.tld/directory/file.cgi?id=2342
+                    by their extension. Example::
+
+                        http://www.domain.tld/directory/file.cgi?id=2342
+
                 Optional if slideshow_srcfile provided.
             slideshow_description (string):
                 Slideshow description
@@ -144,13 +153,18 @@ class Slideshow(object):
                 Requires make_slideshow_private to be Y. [Optional]
 
         Returns:
-            XML with slideshare ID if success. Example:
-                <SlideShowUploaded>
-                  <SlideShowID>{slideshow id goes here}</SlideShowID>
-                </SlideShowUploaded>
-            Note:
-                Slideshow id will be necessary for retrieving the slideshow
-                embed code, once the slideshow has been converted into flash.
+            xml: XML with slideshare ID if success.
+
+            Example:
+                .. code-block:: xml
+
+                    <SlideShowUploaded>
+                        <SlideShowID>{slideshow id goes here}</SlideShowID>
+                    </SlideShowUploaded>
+
+            Slideshow id will be necessary for retrieving the slideshow
+            embed code, once the slideshow has been converted into flash.
+
         """
         params = {}
         params = self.session.prefetch_default_credentials(params, optional)

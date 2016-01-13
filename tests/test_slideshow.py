@@ -1,4 +1,5 @@
 # TODO: first upload, get id, then get!s
+# TODO: make slideshare_id optional!
 import pytest
 
 

@@ -1,9 +1,10 @@
 from __future__ import unicode_literals, absolute_import, print_function
 
-import logging
 import hashlib
-import requests
+import logging
 import time
+
+import requests
 import xmltodict
 from requests.exceptions import ConnectTimeout, ConnectionError
 
@@ -12,11 +13,6 @@ from slideshare.slideshow import Slideshow
 logger = logging.getLogger(__name__)
 # TODO: NullPointer handler?
 # TODO: Add cache?
-
-
-def client(*args, **kwargs):
-    """Returns SlideShareAPI instance. See SlideShareAPI for details"""
-    return SlideShareAPI(*args, **kwargs)
 
 
 class SlideShareError(Exception):
@@ -57,8 +53,10 @@ class SlideShareAPI(requests.Session):
                 Set to True to enable debug mode. Defaults to False. [Optional]
 
         """
-        # TODO: add description
-        # Initialize session
+
+        # TODO: docstring attributes
+
+        # Initialize requests session
         super(SlideShareAPI, self).__init__()
 
         required_list = [api_key, shared_secret]
@@ -67,7 +65,6 @@ class SlideShareAPI(requests.Session):
                              "api key and shared secret must be provided")
         # Set api key for all future requests
         self.params["api_key"] = api_key
-
         self.shared_secret = shared_secret
         # Default credentials
         self.username = username
@@ -77,12 +74,15 @@ class SlideShareAPI(requests.Session):
         if self._debugHTTP:
             import requests.packages.urllib3
             from six.moves import http_client
-            # these two lines enable debugging at httplib level (requests->urllib3->httplib)
-            # you will see the REQUEST, including HEADERS and DATA, and RESPONSE with HEADERS but without DATA.
-            # the only thing missing will be the response.body which is not logged.
+            # these two lines enable debugging at httplib level
+            # (requests->urllib3->httplib)
+            # you will see the REQUEST, including HEADERS and DATA, and
+            # RESPONSE with HEADERS but without DATA. The only thing missing
+            # will be the response.body which is not logged.
             http_client.HTTPConnection.debuglevel = 1
-
-            logging.basicConfig()  # you need to initialize logging, otherwise you will not see anything from requests
+            # you need to initialize logging, otherwise you will not see
+            # anything from requests
+            logging.basicConfig()
             logger.setLevel(logging.DEBUG)
             requests_log = logging.getLogger("requests.packages.urllib3")
             requests_log.setLevel(logging.DEBUG)
@@ -141,7 +141,7 @@ class SlideShareAPI(requests.Session):
         return super(SlideShareAPI, self).prepare_request(request)
 
     def prefetch_default_credentials(self, params, options):
-        """ Prefetch default credentials if they are not specified
+        """ Prefetch default credentials if they are not specified.
         """
         if "username" in options:
             params["username"] = options["username"]
