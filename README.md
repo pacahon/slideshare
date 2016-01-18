@@ -3,7 +3,7 @@
 
 Inspired by https://github.com/cleder/slideshare
 
-Python 3 compatible implementation of Slideshare API based on `requests` module.
+Python 3 compatible implementation of Slideshare API build on top of `requests` module.
 
 # WIP!!! Don't try to use it on production.
 
@@ -41,11 +41,6 @@ TODO:
 
 ## How to test
 
-```
-pip installsphinxcontrib-napoleon==0.4.3
-pip install sphinx_rtd_theme
-```
-
 You must have extra permissions to pass all tests. For more details about 
 extra permissions see `slideshare.upload_slideshow` method
  
@@ -55,6 +50,21 @@ py.test --api_key=<YOUR_API_KEY> --shared_secret=<YOUR_SHARED_SECRET> --slidesha
 ```
 
 See `tests/conftest.py` for more details about available options. (TODO: write about all available options here in more details)
+
+## Docs
+
+```
+pip installsphinxcontrib-napoleon==0.4.3
+pip install sphinx_rtd_theme
+```
+
+And then:
+
+```
+cd docs/
+make html
+```
+
 
 ## TODO:
 
