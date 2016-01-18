@@ -58,10 +58,16 @@ extra permissions see `slideshare.slideshow.upload_slideshow` method
 ```
 py.test --api_key=<YOUR_API_KEY> --shared_secret=<YOUR_SHARED_SECRET>
 ```
+
+Set --slideshow_id, be cute
 See `tests/conftest.py` for more details about available options.
 
 
 <!--python setup.py test-->
+
+## TODO:
+
+* add cache for get requests? 
 
 ## Links
 

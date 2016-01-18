@@ -1,12 +1,9 @@
 from __future__ import unicode_literals, absolute_import, print_function
 
-# TODO: divide into slideshows/slideshow?
+import os
 
 
-class Slideshow(object):
-    def __init__(self, client_session):
-        self.session = client_session
-
+class SlideshowMixin(object):
     def get_slideshow(self, slideshow_id=None, slideshow_url=None, **optional):
         """Get slideshow information by id or url
 
@@ -25,10 +22,13 @@ class Slideshow(object):
             detailed (boolean):
                 Set to 1 to include optional information (tags, for example)
                 Defaults to None. If None only basic information attached [Optional]
+            get_transcript (boolean):
+                Set it to 1 if you want to return with transcript parameter
+                in the response. requires detailed to be set to 1. [Optional]
 
         """
         params = {}
-        params = self.session.prefetch_default_credentials(params, optional)
+        params = self.prefetch_default_credentials(params, optional)
         if slideshow_id:
             params["slideshow_id"] = slideshow_id
         elif slideshow_url:
@@ -43,8 +43,11 @@ class Slideshow(object):
         if "detailed" in optional:
             params["detailed"] = int(bool(optional["detailed"]))
 
-        params.update(self.session.params)
-        return self.session.get('get_slideshow', **params)
+        if "get_transcript" in optional:
+            params["get_transcript"] = int(bool(optional["get_transcript"]))
+
+        params.update(self.params)
+        return self.get('get_slideshow', **params)
 
     def get_slideshows_by_tag(self, tag, **optional):
         """ Get slideshows by tag
@@ -83,7 +86,27 @@ class Slideshow(object):
         if "detailed" in optional:
             params["detailed"] = int(bool(optional["detailed"]))
 
-        return self.session.get('get_slideshows_by_tag', **params)
+        return self.get('get_slideshows_by_tag', **params)
+
+
+    def delete_slideshow(self, slideshow_id, **optional):
+        """Deletes a slideshow
+
+        Args:
+            slideshow_id (int):
+                Id of slideshow which is being deleted
+            username (string):
+                Owner username of the slideshow which is being deleted
+            password (string):
+                Owner password of the slideshow which is being deleted
+
+        """
+        params = {}
+        params = self.prefetch_default_credentials(params, optional,
+                                                   required=True)
+        params["slideshow_id"] = int(slideshow_id)
+
+        return self.get('delete_slideshow', **params)
 
     def upload_slideshow(self, slideshow_title, slideshow_srcfile=None,
                          upload_url=None, **optional):
@@ -134,7 +157,7 @@ class Slideshow(object):
                 Optional if slideshow_srcfile provided.
             slideshow_description (string):
                 Slideshow description
-            slideshow_tags (string):
+            slideshow_tags (string or list):
                 Comma separated list of tags
             make_src_public (enumerated):
                 Y if you want users to be able to download the ppt file,
@@ -167,14 +190,11 @@ class Slideshow(object):
 
         """
         params = {}
-        params = self.session.prefetch_default_credentials(params, optional)
+        params = self.prefetch_default_credentials(params, optional)
         params["slideshow_title"] = slideshow_title
-        files = []
+        upload_file = {}
         if slideshow_srcfile:
-            params["slideshow_srcfile"] = slideshow_srcfile
-            files.append(('file', (slideshow_srcfile['filename'],
-                                   slideshow_srcfile['filehandle'],
-                                   slideshow_srcfile['mimetype'])))
+            upload_file['slideshow_srcfile'] = open(slideshow_srcfile, 'rb')
         elif upload_url:
             params["upload_url"] = upload_url
         else:
@@ -182,8 +202,12 @@ class Slideshow(object):
                              "upload_url must be provided")
         params["slideshow_description"] = optional.get("slideshow_description",
                                                        "")
-        params["slideshow_tags"] = optional.get("slideshow_tags",
-                                                "")
+        if "slideshow_tags" in optional:
+            if isinstance(optional["slideshow_tags"], list):
+                params["slideshow_tags"] = ",".join(optional.get("slideshow_tags"))
+            else:
+                params["slideshow_tags"] = optional.get("slideshow_tags")
+
         if optional.get("make_src_public", "Y") == "N":
             params["make_src_public"] = "N"
 
@@ -210,7 +234,7 @@ class Slideshow(object):
             params["share_with_contacts"] = "Y"
 
         if slideshow_srcfile:
-            return self.session.post('upload_slideshow', files=files, **params)
+            return self.post('upload_slideshow', files=upload_file, **params)
         else:
-            return self.session.get('upload_slideshow', **params)
+            return self.get('upload_slideshow', **params)
 

@@ -8,17 +8,16 @@ import requests
 import xmltodict
 from requests.exceptions import ConnectTimeout, ConnectionError
 
-from slideshare.slideshow import Slideshow
+from slideshare.slideshow import SlideshowMixin
 
 logger = logging.getLogger(__name__)
-# TODO: NullPointer handler?
-# TODO: Add cache?
 
 
 class SlideShareError(Exception):
     """ SlideShare API Error Code.
     See details on http://www.slideshare.net/developers/documentation
     """
+    # TODO: Move here description from slideshare docs
     def __init__(self, errno, errmsg):
         self.errno = errno
         self.errmsg = errmsg
@@ -27,7 +26,7 @@ class SlideShareError(Exception):
         return "SlideShareError {}: {}".format(self.errno, self.errmsg)
 
 
-class SlideShareAPI(requests.Session):
+class SlideShareAPI(requests.Session, SlideshowMixin):
 
     __API_VERSION__ = 2
     BASE_URL = "https://www.slideshare.net/api/{}/".format(__API_VERSION__)
@@ -88,9 +87,6 @@ class SlideShareAPI(requests.Session):
             requests_log.setLevel(logging.DEBUG)
             requests_log.propagate = True
 
-        # Bind api methods
-        self.slideshow = Slideshow(self)
-
     def _url(self, relative_url):
         return "{0}{1}".format(self.BASE_URL, relative_url)
 
@@ -113,7 +109,7 @@ class SlideShareAPI(requests.Session):
                 files = kwargs["files"]
                 del kwargs["files"]
             response = super(SlideShareAPI, self).post(url, data, json,
-                                                       files=files, **kwargs)
+                                                       files=files, params=kwargs)
         except (ConnectionError, ValueError, ConnectTimeout) as e:
             logger.error(e)
             # FIXME: If want only reraise, remove try/except block?
@@ -140,15 +136,21 @@ class SlideShareAPI(requests.Session):
         self.params["hash"] = hashlib.sha1(hash.encode("utf-8")).hexdigest()
         return super(SlideShareAPI, self).prepare_request(request)
 
-    def prefetch_default_credentials(self, params, options):
+    def prefetch_default_credentials(self, params, options, required=False):
         """ Prefetch default credentials if they are not specified.
         """
         if "username" in options:
             params["username"] = options["username"]
         elif self.username:
             params["username"] = self.username
+        elif required:
+            raise ValueError("Credentials error: username must be "
+                             "provided for this type of request")
         if "password" in options:
             params["password"] = options["password"]
         elif self.password:
             params["password"] = self.password
+        elif required:
+            raise ValueError("Credentials error: password must be "
+                             "provided for this type of request")
         return params
