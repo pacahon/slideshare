@@ -1,9 +1,6 @@
 from setuptools import setup, find_packages
 import sys, os
 
-import slideshare
-
-
 def read(*rnames):
     return open(os.path.join(os.path.dirname(__file__), *rnames)).read()
 
@@ -15,7 +12,7 @@ long_description = read('README.md')
 
 setup(
     name='slideshare',
-    version=slideshare.__version__,
+    version="0.0.2",
     description="Slideshare API client",
     author='Sergey Zherevchuk',
     author_email='pacabest@gmail.com',
@@ -31,6 +28,7 @@ setup(
     tests_require=['pytest'],
     classifiers=[
         'Programming Language :: Python',
+        'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3.4',
     ],
 )
