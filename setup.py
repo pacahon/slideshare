@@ -1,5 +1,9 @@
+import os
+
 from setuptools import setup, find_packages
-import sys, os
+
+version = __import__('slideshare').__version__
+
 
 def read(*rnames):
     return open(os.path.join(os.path.dirname(__file__), *rnames)).read()
@@ -12,7 +16,7 @@ long_description = read('README.md')
 
 setup(
     name='slideshare',
-    version="0.0.2",
+    version=version,
     description="Slideshare API client",
     author='Sergey Zherevchuk',
     author_email='pacabest@gmail.com',
