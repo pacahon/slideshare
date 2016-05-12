@@ -17,13 +17,13 @@ slideshare_client.get_slideshow(slideshow_id=<SLIDESHARE_ID>)
 * get_slideshows_by_tag
 * delete_slideshow
 * upload_slideshow (partially tested)
+* edit_slideshow (not tested at all)
 
 TODO:
 
 * get_slideshow_by_group
 * get_slideshows_by_user
 * search_slideshows
-* edit_slideshow
 * get_user_favorites
 * get_user_contacts
 * get_user_groups

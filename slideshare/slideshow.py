@@ -87,6 +87,83 @@ class SlideshowMixin(object):
 
         return self.get('get_slideshows_by_tag', **params)
 
+    def edit_slideshow(self, slideshow_id, **optional):
+        """Edit existing slideshow
+
+        Args:
+            slideshow_id (int):
+                Id of slideshow which is being deleted
+            username (string):
+                Owner username of the slideshow which is being edited
+            password (string):
+                Owner password of the slideshow which is being edited
+            slideshow_title (string):
+                Title of the slideshow.
+            slideshow_description (string):
+                Slideshow description
+            slideshow_tags (string or list):
+                Comma separated list of tags
+            make_slideshow_private (enumerated):
+                Should be Y if you want to make the slideshow private. If this
+                is not set, following tags will not be considered. [Optional]
+            generate_secret_url (enumerated):
+                Generate a secret URL for the slideshow.
+                Requires make_slideshow_private to be Y. [Optional]
+            allow_embeds (enumerated):
+                Sets if other websites should be allowed to embed the slideshow.
+                Requires make_slideshow_private to be Y. [Optional]
+            share_with_contacts (enumerated):
+                Sets if your contacts on SlideShare can view the slideshow.
+                Requires make_slideshow_private to be Y. [Optional]
+
+        Returns:
+            xml: XML with slideshare ID if success.
+
+            Example:
+                .. code-block:: xml
+
+                    <SlideShowEdited>
+                      <SlideShowID>SlideShowID</SlideShowID>
+                    </SlideShowEdited>
+
+        """
+        params = {}
+        params = self.prefetch_default_credentials(params, optional,
+                                                   required=True)
+        params["slideshow_id"] = int(slideshow_id)
+
+        if "slideshow_title" in optional:
+            params["slideshow_title"] = optional["slideshow_title"]
+        if "slideshow_description" in optional:
+            params["slideshow_description"] = optional["slideshow_description"]
+
+        if "slideshow_tags" in optional:
+            if isinstance(optional["slideshow_tags"], list):
+                params["slideshow_tags"] = ",".join(
+                    optional.get("slideshow_tags"))
+            else:
+                params["slideshow_tags"] = optional.get("slideshow_tags")
+
+        if optional.get("make_src_public", "Y") == "N":
+            params["make_src_public"] = "N"
+
+        if optional.get("make_slideshow_private", "N") == "Y":
+            params["make_slideshow_private"] = "Y"
+
+        if optional.get("generate_secret_url", "N") == "Y":
+            if "make_slideshow_private" not in params:
+                raise ValueError("upload_slideshow: make_slideshow_private must"
+                                 " be set to Y if you want generate secret url")
+            params["generate_secret_url"] = "Y"
+
+        if optional.get("allow_embeds", "N") == "Y":
+            if "make_slideshow_private" not in params:
+                raise ValueError("upload_slideshow: make_slideshow_private must"
+                                 " be set to Y if you want allow embeds")
+            params["allow_embeds"] = "Y"
+
+        return self.get('edit_slideshow', **params)
+
     def delete_slideshow(self, slideshow_id, **optional):
         """Deletes a slideshow
 
