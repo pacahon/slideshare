@@ -1,5 +1,6 @@
 import pytest
 
+
 def test_get_slideshow_by_id(client, slideshow):
     response = client.get_slideshow(slideshow_id=slideshow.id)
     assert "Slideshow" in response
@@ -7,10 +8,12 @@ def test_get_slideshow_by_id(client, slideshow):
     assert response['Slideshow']['URL'] == slideshow.url
     assert "Tags" not in response['Slideshow']
 
+
 def test_get_slideshow_by_url(client, slideshow):
     response = client.get_slideshow(slideshow_url=slideshow.url)
     assert "Slideshow" in response
     assert response['Slideshow']['ID'] == slideshow.id
+
 
 def test_get_slideshow_combined(client, slideshow):
     """Make sure slideshow_id has precedence over slideshow_url"""
@@ -18,17 +21,21 @@ def test_get_slideshow_combined(client, slideshow):
                                     slideshow_url="dummy_url")
     assert response['Slideshow']['URL'] == slideshow.url
 
+
 def test_get_slideshow_by_id_with_detail(client, slideshow):
     response = client.get_slideshow(slideshow_id=slideshow.id, detailed=True)
     assert "Tags" in response['Slideshow']
+
 
 @pytest.mark.skipif(True, reason="No idea is it really usefull for anybody")
 def test_get_slideshow_by_url_exclude_tags(client):
     pass
 
+
 def test_get_slideshow_by_id_with_transcript(client, slideshow):
     response = client.get_slideshow(slideshow_id=slideshow.id, get_transcript=True)
     assert "Transcript" in response["Slideshow"]
+
 
 def test_get_slideshows_by_tag(client):
     super_popular_tag = "slideshare"
@@ -37,6 +44,7 @@ def test_get_slideshows_by_tag(client):
     assert "Count" in response["Tag"]
     assert "Slideshow" in response["Tag"]
     assert len(response["Tag"]["Slideshow"]) == 2
+
 
 def test_get_slideshows_by_tag_limit(client):
     super_popular_tag = "slideshare"
@@ -47,12 +55,14 @@ def test_get_slideshows_by_tag_limit(client):
     response = client.get_slideshows_by_tag(super_popular_tag, limit=2)
     assert isinstance(response["Tag"]["Slideshow"], list)
 
+
 def test_get_slideshows_by_tag_detailed(client):
     super_popular_tag = "slideshare"
     response = client.get_slideshows_by_tag(super_popular_tag, limit=1, detailed=True)
     assert "Tag" in response
     assert "Slideshow" in response["Tag"]
     assert "Tags" in response["Tag"]["Slideshow"]
+
 
 def test_get_slideshows_by_tag_offset(client):
     super_popular_tag = "slideshare"
@@ -67,7 +77,7 @@ def test_get_slideshows_by_tag_offset(client):
     assert response["Tag"]["Slideshow"][0]["ID"] == slideshow_id
 
 
-def test_upload_slideshow_by_upload_url(client):
+def test_upload_and_delete_slideshow_by_upload_url(client):
     upload_url = "https://github.com/pacahon/slideshare/raw/master/tests/test_slideshow/slide.pdf"
     slideshow_title = "Test Slideshow Title"
     description = "Slideshow Description"

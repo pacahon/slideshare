@@ -64,8 +64,7 @@ class SlideshowMixin(object):
                 Defaults to None. If None only basic information attached [Optional]
 
         """
-        params = {}
-        params["tag"] = tag
+        params = {"tag": tag}
 
         if "limit" in optional:
             try:
@@ -87,7 +86,6 @@ class SlideshowMixin(object):
             params["detailed"] = int(bool(optional["detailed"]))
 
         return self.get('get_slideshows_by_tag', **params)
-
 
     def delete_slideshow(self, slideshow_id, **optional):
         """Deletes a slideshow
@@ -204,7 +202,8 @@ class SlideshowMixin(object):
                                                        "")
         if "slideshow_tags" in optional:
             if isinstance(optional["slideshow_tags"], list):
-                params["slideshow_tags"] = ",".join(optional.get("slideshow_tags"))
+                params["slideshow_tags"] = ",".join(
+                    optional.get("slideshow_tags"))
             else:
                 params["slideshow_tags"] = optional.get("slideshow_tags")
 

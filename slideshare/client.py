@@ -8,22 +8,10 @@ import requests
 import xmltodict
 from requests.exceptions import ConnectTimeout, ConnectionError
 
+from slideshare.exceptions import SlideShareError
 from slideshare.slideshow import SlideshowMixin
 
 logger = logging.getLogger(__name__)
-
-
-class SlideShareError(Exception):
-    """ SlideShare API Error Code.
-    See details on http://www.slideshare.net/developers/documentation
-    """
-    # TODO: Move here description from slideshare docs
-    def __init__(self, errno, errmsg):
-        self.errno = errno
-        self.errmsg = errmsg
-
-    def __str__(self):
-        return "SlideShareError {}: {}".format(self.errno, self.errmsg)
 
 
 class SlideShareAPI(requests.Session, SlideshowMixin):
@@ -36,24 +24,22 @@ class SlideShareAPI(requests.Session, SlideshowMixin):
                  shared_secret,
                  username=None,
                  password=None,
-                 debugHTTP=False):
+                 debug_http=False):
         """ Initialize SlideShare API client
 
         Args:
             api_key (string):
                 API key http://www.slideshare.net/developers/applyforapi
             shared_secret (string):
-                Shared secret, get it with API key, used to generate required `hash` field
+                Shared secret, get it with API key, used to generate
+                required `hash` field
             username (string):
                 Default username of the requesting user. [Optional]
             password (string):
                 Default password of the requesting user. [Optional]
-            debugHTTP (boolean):
+            debug_http (boolean):
                 Set to True to enable debug mode. Defaults to False. [Optional]
-
         """
-
-        # TODO: docstring attributes
 
         # Initialize requests session
         super(SlideShareAPI, self).__init__()
@@ -69,8 +55,8 @@ class SlideShareAPI(requests.Session, SlideshowMixin):
         self.username = username
         self.password = password
 
-        self._debugHTTP = bool(debugHTTP)
-        if self._debugHTTP:
+        self._debug_http = bool(debug_http)
+        if self._debug_http:
             import requests.packages.urllib3
             from six.moves import http_client
             # these two lines enable debugging at httplib level
@@ -96,7 +82,7 @@ class SlideShareAPI(requests.Session, SlideshowMixin):
             response = super(SlideShareAPI, self).get(url, params=kwargs)
         except (ConnectionError, ValueError, ConnectTimeout) as e:
             logger.error(e)
-            # FIXME: processing errors? What to do with this crap? :<
+            # TODO: add error wrapper
             raise e
         logger.debug(response.content)
         return self.parse_response(response.content)
@@ -109,15 +95,17 @@ class SlideShareAPI(requests.Session, SlideshowMixin):
                 files = kwargs["files"]
                 del kwargs["files"]
             response = super(SlideShareAPI, self).post(url, data, json,
-                                                       files=files, params=kwargs)
+                                                       files=files,
+                                                       params=kwargs)
         except (ConnectionError, ValueError, ConnectTimeout) as e:
             logger.error(e)
-            # FIXME: If want only reraise, remove try/except block?
+            # TODO: add error wrapper
             raise e
         logger.debug(response.content)
         return self.parse_response(response.content)
 
-    def parse_response(self, content):
+    @staticmethod
+    def parse_response(content):
         data = xmltodict.parse(content)
         if data.get('SlideShareServiceError'):
             logger.debug(data)
