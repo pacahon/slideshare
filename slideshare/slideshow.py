@@ -310,7 +310,7 @@ class SlideshowMixin(object):
             params["share_with_contacts"] = "Y"
 
         if slideshow_srcfile:
-            return self.post('upload_slideshow', files=upload_file, **params)
+            return self.post('upload_slideshow', files=upload_file, data=params)
         else:
             return self.get('upload_slideshow', **params)
 
