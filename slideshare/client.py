@@ -6,7 +6,7 @@ import time
 
 import requests
 import xmltodict
-from requests.exceptions import ConnectTimeout, ConnectionError
+from requests.exceptions import RequestException
 
 from slideshare.exceptions import SlideShareError
 from slideshare.slideshow import SlideshowMixin
@@ -80,9 +80,12 @@ class SlideShareAPI(requests.Session, SlideshowMixin):
         url = self._url(url)
         try:
             response = super(SlideShareAPI, self).get(url, params=kwargs)
-        except (ConnectionError, ValueError, ConnectTimeout) as e:
+            # Raise HTTPError on 40x and 50x
+            response.raise_for_status()
+        # FIXME: ValueError?
+        except (ValueError, RequestException) as e:
             logger.error(e)
-            # TODO: add error wrapper
+            # TODO: extend SlideShareError with ValueError and RequestException?
             raise e
         logger.debug(response.content)
         return self.parse_response(response.content)
@@ -97,7 +100,9 @@ class SlideShareAPI(requests.Session, SlideshowMixin):
             response = super(SlideShareAPI, self).post(url, data, json,
                                                        files=files,
                                                        params=kwargs)
-        except (ConnectionError, ValueError, ConnectTimeout) as e:
+            # Raise HTTPError on 40x and 50x
+            response.raise_for_status()
+        except (ValueError, RequestException) as e:
             logger.error(e)
             # TODO: add error wrapper
             raise e
