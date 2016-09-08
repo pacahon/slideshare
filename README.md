@@ -1,6 +1,6 @@
 # python-slideshare
 
-Python 2/3 compatible implementation of Slideshare API build on top of `requests` module.
+Python 2/3 compatible version of Slideshare API.
 
 ## How to use
 
