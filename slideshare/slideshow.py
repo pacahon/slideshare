@@ -1,6 +1,7 @@
 from __future__ import unicode_literals, absolute_import, print_function
 
 import os
+posixpath
 
 
 class SlideshowMixin(object):
@@ -269,7 +270,11 @@ class SlideshowMixin(object):
         params["slideshow_title"] = slideshow_title
         upload_file = {}
         if slideshow_srcfile:
-            upload_file['slideshow_srcfile'] = open(slideshow_srcfile, 'rb')
+            # Workaround to deal with filenames containing non-ASCII symbols.
+            _, ext = posixpath.splitext(slideshow_srcfile)
+            valid_fname = 'slideshow_srcfile' + ext
+            upload_file = [
+                (valid_fname, (valid_fname, open(slideshow_srcfile, 'rb')))]
         elif upload_url:
             params["upload_url"] = upload_url
         else:
