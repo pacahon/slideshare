@@ -1,7 +1,7 @@
 from __future__ import unicode_literals, absolute_import, print_function
 
 import os
-posixpath
+import posixpath
 
 
 class SlideshowMixin(object):
