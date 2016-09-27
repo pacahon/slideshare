@@ -272,9 +272,9 @@ class SlideshowMixin(object):
         if slideshow_srcfile:
             # Workaround to deal with filenames containing non-ASCII symbols.
             _, ext = posixpath.splitext(slideshow_srcfile)
-            valid_fname = 'slideshow_srcfile' + ext
+            fname = 'slideshow_srcfile' + ext
             upload_file = [
-                (valid_fname, (valid_fname, open(slideshow_srcfile, 'rb')))]
+                ('slideshow_srcfile', (fname, open(slideshow_srcfile, 'rb')))]
         elif upload_url:
             params["upload_url"] = upload_url
         else:
